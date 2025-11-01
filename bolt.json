@@ -1,0 +1,7 @@
+{
+  "name": "architect-platform",
+  "build": "npm ci && npm run build",
+  "start": "npm run preview",
+  "dir": "web",
+  "static": "web/dist"
+}

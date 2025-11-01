@@ -1,0 +1,1 @@
+{"root":["./src/TheArchitectPlatform.tsx","./src/main.tsx","./src/lib/supabaseClient.ts","./src/lib/types.ts","./src/platform/AIStudioStorage.ts","./src/platform/FolderSidebar.tsx","./src/platform/ResultsContainer.tsx","./src/platform/StagedRevealOverlay.tsx","./src/platform/StudioChat.tsx","./src/platform/useRealtimeLanes.ts"],"version":"5.9.3"}
