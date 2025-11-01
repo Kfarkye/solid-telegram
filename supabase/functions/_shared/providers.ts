@@ -14,7 +14,7 @@ export function assertAllowed(model: string): asserts model is AllowedModel {
   }
 }
 
-export async function callOpenAI(model: AllowedModel, input: string, system?: string, temperature=0, max_tokens=1024): Promise<ProviderResult> {
+export async function callOpenAI(model: AllowedModel, input: string, system?: string, temperature=1, max_completion_tokens=4096): Promise<ProviderResult> {
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) throw new Error("Missing OPENAI_API_KEY");
   const url = "https://api.openai.com/v1/chat/completions";
@@ -22,7 +22,7 @@ export async function callOpenAI(model: AllowedModel, input: string, system?: st
     ...(system ? [{ role: "system", content: system }] as any[] : []),
     { role: "user", content: input }
   ];
-  const payload = { model, messages, temperature, max_tokens };
+  const payload = { model, messages, temperature, max_completion_tokens };
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", "authorization": `Bearer ${key}` },
@@ -69,10 +69,13 @@ export async function callAnthropic(model: AllowedModel, input: string, system?:
   return { output_text, raw: data, provider: "anthropic", model };
 }
 
-export async function callByModel(model: AllowedModel, input: string, system?: string, temperature=0, max_tokens=1024): Promise<ProviderResult> {
+export async function callByModel(model: AllowedModel, input: string, system?: string, temperature?: number, max_tokens?: number): Promise<ProviderResult> {
   switch (model) {
-    case "GPT-5": return callOpenAI(model, input, system, temperature, max_tokens);
-    case "Gemini-2.5-Pro": return callGemini(model, input, system);
-    case "Claude-4.5-Sonnet": return callAnthropic(model, input, system, temperature, max_tokens);
+    case "GPT-5":
+      return callOpenAI(model, input, system, temperature ?? 1, max_tokens ?? 4096);
+    case "Gemini-2.5-Pro":
+      return callGemini(model, input, system);
+    case "Claude-4.5-Sonnet":
+      return callAnthropic(model, input, system, temperature ?? 0, max_tokens ?? 4096);
   }
 }
