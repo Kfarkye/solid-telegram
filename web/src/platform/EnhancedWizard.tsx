@@ -86,8 +86,9 @@ export function EnhancedWizard({ onComplete, onCancel }: EnhancedWizardProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 flex items-center justify-center overflow-y-auto"
       style={{
+        zIndex: 9999,
         background:
           'radial-gradient(ellipse 1400px 700px at 50% 20%, rgba(17,24,39,0.98) 0%, rgba(0,0,0,0.98) 50%, rgba(0,0,0,1) 100%)',
         backdropFilter: 'blur(24px)'

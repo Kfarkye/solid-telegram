@@ -70,10 +70,10 @@ export function EnhancedStagedReveal({ onComplete, lanes }: EnhancedStagedReveal
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-700 ${
+      className={`fixed inset-0 flex items-center justify-center transition-opacity duration-700 ${
         isExiting ? 'opacity-0' : 'opacity-100'
       }`}
-      style={{ backdropFilter: 'blur(24px)' }}
+      style={{ backdropFilter: 'blur(24px)', zIndex: 9998 }}
     >
       <div className="animated-gradient-bg" />
       <div className="w-full max-w-4xl px-12 animate-reveal-in">

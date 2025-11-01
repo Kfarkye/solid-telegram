@@ -97,7 +97,8 @@ export function HistorySidebar({ isOpen, onClose, onLoadProject }: HistorySideba
 
   return (
     <aside
-      className="fixed top-0 right-0 w-[360px] h-full bg-black border-l border-white/10 z-50 flex flex-col"
+      className="fixed top-0 right-0 w-[360px] h-full bg-black border-l border-white/10 flex flex-col"
+      style={{ zIndex: 9997 }}
       role="dialog"
       aria-modal="true"
       aria-label="History"
