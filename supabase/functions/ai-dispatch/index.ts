@@ -1,54 +1,55 @@
-import { buildCorsHeaders } from "../_shared/cors.ts";
-import { serviceClient } from "../_shared/supabase.ts";
-import { sha256Hex } from "../_shared/hash.ts";
-import { callByModel, type AllowedModel, ALLOWED_MODELS } from "../_shared/providers.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { corsHeadersFor, errorResponse, successResponse } from "../_shared/auth.ts";
+import { callByModel } from "../_shared/providers.ts";
+import { assertAllowedModel } from "../_shared/model-guard.ts";
 
 type Body = {
-  model: AllowedModel;
-  input: string;
-  system?: string;
-  temperature?: number;
-  max_tokens?: number;
+  model: string;
+  prompt?: string;
+  messages?: { role: "system" | "user" | "assistant"; content: string }[];
+  // model-specific params:
+  max_completion_tokens?: number; // GPT-5
+  max_tokens?: number;            // Claude
+  gemini_config?: Record<string, unknown>;
 };
 
 Deno.serve(async (req) => {
-  const origin = req.headers.get("origin");
-  const cors = buildCorsHeaders(origin, (Deno.env.get("CORS_ORIGINS") ?? "").split(",").filter(Boolean) || null);
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeadersFor(req), status: 204 });
+  }
+  if (req.method !== "POST") {
+    return errorResponse(req, "Method not allowed", 405);
+  }
 
   try {
-    const body = await req.json() as Body;
-    const { model, input, system, temperature = 0, max_tokens = 1024 } = body || {};
+    const body = (await req.json()) as Body;
+    assertAllowedModel(body.model);
 
-    if (!model || !ALLOWED_MODELS.includes(model)) {
-      return new Response(JSON.stringify({ error: "Unsupported model. Allowed: GPT-5, Gemini-2.5-Pro, Claude-4.5-Sonnet" }), { status: 400, headers: { ...cors, "content-type": "application/json" } });
+    // Hard validation per your spec
+    if (body.model === "GPT-5" && body.max_completion_tokens === undefined) {
+      return errorResponse(req, "GPT-5 requires max_completion_tokens", 400);
     }
-    if (!input || typeof input !== "string") {
-      return new Response(JSON.stringify({ error: "Missing 'input' string" }), { status: 400, headers: { ...cors, "content-type": "application/json" } });
+    if (body.model === "Claude-4.5-Sonnet" && body.max_tokens === undefined) {
+      return errorResponse(req, "Claude-4.5-Sonnet requires max_tokens", 400);
     }
 
-    const res = await callByModel(model, input, system, temperature, max_tokens);
+    const result = await callByModel({
+      model: body.model as any,
+      prompt: body.prompt,
+      messages: body.messages,
+      max_completion_tokens: body.max_completion_tokens,
+      max_tokens: body.max_tokens,
+      gemini_config: body.gemini_config,
+    });
 
-    // metanotes
-    try {
-      const supabase = serviceClient();
-      const input_sha256 = await sha256Hex(input);
-      await supabase.from("metanotes").insert({
-        run_id: crypto.randomUUID(),
-        model,
-        provider: res.provider,
-        input_sha256,
-        prompt_preview: input.slice(0, 200),
-        notes: {
-          worker: { name: "ai-dispatch", version: "1.0.0" },
-          routing_policy: { strict_model_ids: ALLOWED_MODELS, chosen_model: model }
-        }
-      });
-    } catch (e) { console.error("metanotes insert failed:", e); }
-
-    return new Response(JSON.stringify({ success: true, model, provider: res.provider, output_text: res.output_text, raw: res.raw }), { status: 200, headers: { ...cors, "content-type": "application/json" } });
-  } catch (e) {
-    console.error(e);
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: { "content-type": "application/json" } });
+    return successResponse(req, {
+      ok: true,
+      provider: result.provider,
+      model: result.model,
+      used_params: result.used_params,
+      text: result.text,
+    });
+  } catch (e: any) {
+    return errorResponse(req, e?.message ?? "Internal error", 500);
   }
 });
