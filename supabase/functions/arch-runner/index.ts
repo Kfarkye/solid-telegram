@@ -2,7 +2,12 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 import { serviceClient } from "../_shared/supabase.ts";
 import { callByModel, type AllowedModel } from "../_shared/providers.ts";
 
-type Body = { vision: string; defaultModel?: AllowedModel };
+type Body = {
+  vision: string;
+  defaultModel?: AllowedModel;
+  wizard_data?: any;
+  project_name?: string;
+};
 const LANES = ["spec","sql","ui","test","cicd"] as const;
 type Lane = typeof LANES[number];
 
@@ -42,7 +47,15 @@ Deno.serve(async (req) => {
     const supabase = serviceClient();
 
     // create run
-    const { data: runRows, error: runErr } = await supabase.from("arch_runs").insert({ vision, status: "running", meta: { version: "1.0.0" } }).select().limit(1);
+    const insertData: any = {
+      vision,
+      status: "running",
+      meta: { version: "1.0.0" }
+    };
+    if (body.wizard_data) insertData.wizard_data = body.wizard_data;
+    if (body.project_name) insertData.project_name = body.project_name;
+
+    const { data: runRows, error: runErr } = await supabase.from("arch_runs").insert(insertData).select().limit(1);
     if (runErr || !runRows?.length) {
       console.error("create run error:", runErr);
       throw new Error("Failed to create run");
